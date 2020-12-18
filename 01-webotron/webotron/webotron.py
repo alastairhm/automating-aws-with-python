@@ -1,8 +1,8 @@
-import boto3
-import click
-from botocore.exceptions import ClientError
 from pathlib import Path
 import mimetypes
+from botocore.exceptions import ClientError
+import boto3
+import click
 
 session = boto3.Session(profile_name='pythonAutomation')
 s3 = session.resource('s3')
@@ -10,7 +10,6 @@ s3 = session.resource('s3')
 @click.group()
 def cli():
     "Webotron deploys websites to AWS"
-    pass
 
 @cli.command('list-buckets')
 def list_buckets():
@@ -70,9 +69,8 @@ def setup_bucket(bucket):
         }
     })
 
-    return
-
 def upload_file(s3_bucket, path, key):
+    "Upload a file to an S3 bucket with MIME Type"
     content_type = mimetypes.guess_type(key)[0] or 'text/plain'
     s3_bucket.upload_file(
         path,
@@ -80,11 +78,12 @@ def upload_file(s3_bucket, path, key):
         ExtraArgs={
             'ContentType': content_type
         })
+    print(key)
 
 @cli.command('sync')
 @click.argument('pathname', type=click.Path(exists=True))
 @click.argument('bucket')
-def sync(pathname,bucket):
+def sync(pathname, bucket):
     "Sync contents of PATHNAME to BUCKET"
     s3_bucket = s3.Bucket(bucket)
 
@@ -92,8 +91,10 @@ def sync(pathname,bucket):
 
     def handle_directory(target):
         for p in target.iterdir():
-            if p.is_dir() : handle_directory(p)
-            if p.is_file() : upload_file(s3_bucket, str(p), str(p.relative_to(root)))
+            if p.is_dir():
+                handle_directory(p)
+            if p.is_file():
+                upload_file(s3_bucket, str(p), str(p.relative_to(root)))
 
     handle_directory(root)
 
